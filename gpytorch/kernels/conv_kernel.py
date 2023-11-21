@@ -47,7 +47,7 @@ class ConvKernel(Kernel):
         patches = patches.reshape(X.shape[0], self.colour_channels*self.patch_size[0]*self.patch_size[1], -1)
         
         return patches.float() # [800, 6, 24]
-    def forward(self, X, X2=None, **params):
+    def forward(self, X, X2=None, diag=False, **params):
         # if (
         #     X.requires_grad
         #     or X2.requires_grad
@@ -56,6 +56,8 @@ class ConvKernel(Kernel):
         #     or params.get("last_dim_is_batch", False)
         #     or trace_mode.on()
         # ):
+        if diag:
+            return self.Kdiag(X)
         tic = time.perf_counter()
         Xp = self._get_patches(X)
         Xp = Xp.view(-1, self.patch_len) #(N*num_patches, patch_h*patch_w)
@@ -73,7 +75,7 @@ class ConvKernel(Kernel):
         Xp = self._get_patches(X)
 
         def sumbK(Xp):
-            return torch.sum(self.base_kernel.K(Xp))
+            return torch.sum(self.base_kernel(Xp))
 
         return torch.stack([sumbK(patch) for patch in Xp]) / self.num_patches ** 2.0
 
