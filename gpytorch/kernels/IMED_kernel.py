@@ -36,16 +36,18 @@ class IMEDKernel(Kernel):
         c = torch.linspace(0,w-1,w)
         c = c.repeat(v*h)
         # all pixel locations
-        Vloc = torch.cat((a.unsqueeze(1),b.unsqueeze(1), c.unsqueeze(1)), dim=1)
+        Vloc = torch.cat((a.unsqueeze(1),b.unsqueeze(1), c.unsqueeze(1)), dim=1).to(self.device)
+
         # pixel pairwise Euclidean distance on image lattice
         Z = self.covar_dist(Vloc, Vloc)  #try torch.cdist(Ploc, Ploc)
         G = torch.exp(-self.IMED_lengthscale*Z**2) 
-        G = G + 1e-6*torch.diag(torch.ones(G.shape[0]))
+        G = G + 1e-6*torch.diag(torch.ones(G.shape[0])).to(self.device)
 
         return G
 
     def forward(self, X, X2=None, diag=False, **params):
-        
+        if diag:
+            return self.Kdiag(X)
         G = self._get_G()
         #G=L@L.mT
         L = torch.linalg.cholesky(G)
