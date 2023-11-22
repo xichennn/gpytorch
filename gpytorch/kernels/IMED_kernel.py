@@ -8,7 +8,6 @@ class IMEDKernel(Kernel):
         super(IMEDKernel, self).__init__(**kwargs)
         self.base_kernel = base_kernel
         self.tensor_size = tensor_size
-        self.num_channels = num_channles
 
         self.register_parameter(name="raw_IMED_lengthscale", parameter=torch.nn.Parameter(torch.zeros(1)))
         # set the weight constraint
