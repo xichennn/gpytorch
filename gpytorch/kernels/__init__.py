@@ -32,6 +32,7 @@ from .scale_kernel import ScaleKernel
 from .spectral_delta_kernel import SpectralDeltaKernel
 from .spectral_mixture_kernel import SpectralMixtureKernel
 from .conv_kernel import ConvKernel, WeightedConv, GeometricKernel, WeightedGeometric
+from .IMED_kernel import IMEDKernel
 
 __all__ = [
     "keops",
@@ -72,4 +73,5 @@ __all__ = [
     "WeightedConv", 
     "GeometricKernel", 
     "WeightedGeometric",
+    "IMEDKernel",
 ]
