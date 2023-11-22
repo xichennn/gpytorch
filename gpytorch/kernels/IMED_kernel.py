@@ -4,10 +4,7 @@ from ..constraints.constraints import Positive
 
 
 class IMEDKernel(Kernel):
-    def __init__(self, base_kernel, tensor_size, num_channles=1, length_constraint=None, **kwargs):
-        """
-        num_channels: 1 for grayscale image, X.size(2) for 3D geometric
-        """
+    def __init__(self, base_kernel, tensor_size, length_constraint=None, **kwargs):
         super(IMEDKernel, self).__init__(**kwargs)
         self.base_kernel = base_kernel
         self.tensor_size = tensor_size
@@ -28,7 +25,6 @@ class IMEDKernel(Kernel):
 
     # get IMED metric G
     def _get_G(self):
-
         if len(self.tensor_size) == 2:
             w = 1
         elif len(self.tensor_size) == 3:
