@@ -67,7 +67,7 @@ class ConvKernel(Kernel):
         bigK = self.base_kernel(Xp, Xp2)
         K = torch.mean(bigK.to_dense().view(X.size(0), self.num_patches, -1, self.num_patches), dim=(1, 3))
       
-        return to_linear_operator(K / self.num_patches ** 2.0)
+        return to_linear_operator(K)
 
     def Kdiag(self, X):
         Xp = self._get_patches(X)
