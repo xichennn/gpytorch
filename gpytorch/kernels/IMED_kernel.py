@@ -61,7 +61,7 @@ class IMEDKernel(Kernel):
         L = torch.linalg.cholesky(G)
         Xp = X@L
 
-        return torch.sum(self.base_kernel(Xp))
+        return torch.sum(self.base_kernel(Xp), dim=-1)
         
 
 
