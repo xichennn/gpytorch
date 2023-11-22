@@ -42,11 +42,10 @@ class ConvKernel(Kernel):
         # get all image windows of size (patch_h, patch_w) and stride (1,1)
         patches = castX.unfold(2, self.patch_size[0], 1).unfold(3, self.patch_size[1], 1)
         # Permute so that channels are next to patch dimension
-        patches = patches.permute(0, 2, 3, 1, 4, 5).contiguous()  # [80, 5, 5, 1, 3, 3]
-        # View as [batch_size, channels*patch_h*patch_w, heihgt*width]
-        patches = patches.reshape(X.shape[0], self.colour_channels*self.patch_size[0]*self.patch_size[1], -1)
+        patches = patches.permute(0, 2, 3, 1, 4, 5).contiguous()  # [799, 6, 4, 1, 3, 2]
+        patches = patches.reshape(X.shape[0], self.num_patches, -1)
         
-        return patches.float() # [800, 6, 24]
+        return patches.float() # [800, 24, 6]
         
     def forward(self, X, X2=None, diag=False, **params):
         # if (
