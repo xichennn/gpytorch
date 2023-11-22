@@ -26,7 +26,7 @@ class ConvKernel(Kernel):
         self.base_kernel.input_dim = np.prod(patch_size)
         # self.base_kernel.ard_num_dims = np.prod(patch_size)
         self.colour_channels = colour_channels
-        self.padding = 1
+        self.padding = 0
 
     def _get_patches(self, X):
         """
