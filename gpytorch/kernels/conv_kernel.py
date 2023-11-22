@@ -8,12 +8,8 @@ import numpy as np
 # from ..settings import lazily_evaluate_kernels
 from .kernel import Kernel
 from linear_operator import to_dense, to_linear_operator
-# import sys
-# import os
+from ..constraints.constraints import Positive
 
-# SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-# sys.path.append(os.path.dirname(os.path.dirname(SCRIPT_DIR)))
-# from gpytorch.kernels.kernel import Kernel
 import time
 
 class ConvKernel(Kernel):
@@ -86,19 +82,6 @@ class ConvKernel(Kernel):
     def Kzz(self, Z):
         return self.base_kernel.K(Z)
 
-    def init_inducing(self, X, M, method="default"):
-        if method == "default" or method == "random":
-            patches = self.compute_patches(X[np.random.permutation(len(X))[:M], :]).reshape(-1, self.patch_len)
-            Zinit = patches[np.random.permutation(len(patches))[:M], :]
-            Zinit += np.random.rand(*Zinit.shape) * 0.001
-            return Zinit
-        elif method == "patches-unique":
-            patches = np.unique(self.compute_patches(
-                X[np.random.permutation(len(X))[:M], :]).reshape(-1, self.patch_len), axis=0)
-            return patches[np.random.permutation((len(patches)))[:M], :]
-        else:
-            raise NotImplementedError
-
     @property
     def patch_len(self):
         return np.prod(self.patch_size)
@@ -115,3 +98,76 @@ class ConvKernel(Kernel):
 
     def compute_Kzx(self, Z, X):
         return self.Kzx(Z, X)
+
+class ColourPatchConv(ConvKernel):
+    def __init__(self, base_kernel, img_size, patch_size, colour_channels=1, **kwargs):
+        super(ColourPatchConv, self).__init__(base_kernel, img_size, patch_size, colour_channels, **kwargs)
+        self.base_kernel.input_dim = np.prod(patch_size) * self.colour_channels
+
+    def _get_patches(self, X):
+        castX = X.view(X.size(0), self.img_size[0], self.img_size[1], self.colour_channels)
+        # patches = F.unfold(castX, self.patch_size, padding=0)
+        # get all image windows of size (patch_h, patch_w) and stride (1,1)
+        patches = castX.unfold(1, self.patch_size[0], 1).unfold(2, self.patch_size[1], 1)
+        # Permute so that channels are next to patch dimension
+        patches = patches.contiguous()  # [799, 6, 4, 1, 3, 2]
+        return patches.view(X.size(0), self.num_patches, -1)
+
+    @property
+    def patch_len(self):
+        return np.prod(self.patch_size) * self.colour_channels
+
+    @property
+    def num_patches(self):
+        return (self.img_size[0] - self.patch_size[0] + 1) * (self.img_size[1] - self.patch_size[1] + 1)
+
+
+class WeightedConv(ConvKernel):
+    def __init__(self, base_kernel, img_size, patch_size, colour_channels=1, weight_constraint=None, **kwargs):
+        super(WeightedConv, self).__init__(base_kernel, img_size, patch_size, colour_channels, **kwargs)
+        # self.W = GPflow.param.Param(np.ones(self.num_patches))
+        self.register_parameter(name="raw_patch_weights", parameter=torch.nn.Parameter(torch.ones(self.num_patches)))
+        # set the weight constraint
+        if weight_constraint is None:
+            weight_constraint = Positive()
+        # register the constraint
+        self.register_constraint("raw_patch_weights", weight_constraint)
+
+    # now set up the 'actual' paramter
+    @property
+    def patch_weights(self):
+        # when accessing the parameter, apply the constraint transform
+        return self.raw_patch_weights_constraint.transform(self.raw_patch_weights)
+    
+    def forward(self, X, X2=None, diag=False, **params):
+        if diag:
+            return self.Kdiag(X)
+        Xp = self._get_patches(X)
+        Xp = Xp.view(-1, self.patch_len)
+        Xp2 = None if X2 is None else self._get_patches(X2).view(X2.size(0) * self.num_patches, self.patch_len)
+
+        bigK = self.base_kernel(Xp, Xp2)
+        bigK = bigK.to_dense().view(X.size(0), self.num_patches, -1, self.num_patches)
+        W2 = self.patch_weights.unsqueeze(0) * self.patch_weights.unsqueeze(1)
+        W2 = W2.unsqueeze(0)
+        W2 = W2.unsqueeze(2)
+        W2bigK = bigK * W2
+        K = torch.sum(W2bigK, [1, 3]) / self.num_patches ** 2.0
+        return to_linear_operator(K)
+
+    def Kdiag(self, X):
+        Xp = self._get_patches(X)
+        W2 = self.patch_weights.unsqueeze(0) * self.patch_weights.unsqueeze(1)
+
+        def Kdiag_element(patches):
+            return torch.sum(self.base_kernel(patches) * W2)
+
+        return torch.stack([Kdiag_element(patch) for patch in Xp]) / self.num_patches ** 2.0
+
+    def Kzx(self, Z, X):
+        Xp = self._get_patches(X)
+        Xp = Xp.view(-1, self.patch_len)
+        bigKzx = self.base_kernel(Z, Xp)
+        bigKzx = bigKzx.view(Z.size(0), X.size(0), self.num_patches)
+        Kzx = torch.sum(bigKzx * self.W, [2])
+        return Kzx / self.num_patches
