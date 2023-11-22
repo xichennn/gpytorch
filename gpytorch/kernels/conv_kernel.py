@@ -47,6 +47,7 @@ class ConvKernel(Kernel):
         patches = patches.reshape(X.shape[0], self.colour_channels*self.patch_size[0]*self.patch_size[1], -1)
         
         return patches.float() # [800, 6, 24]
+        
     def forward(self, X, X2=None, diag=False, **params):
         # if (
         #     X.requires_grad
@@ -58,18 +59,15 @@ class ConvKernel(Kernel):
         # ):
         if diag:
             return self.Kdiag(X)
-        tic = time.perf_counter()
+       
         Xp = self._get_patches(X)
         Xp = Xp.view(-1, self.patch_len) #(N*num_patches, patch_h*patch_w)
         Xp2 = self._get_patches(X2).view(-1, self.patch_len) if X2 is not None else None
-        
-        # self.base_kernel.batch_shape = Xp.shape[0]
-        # lazily_evaluate_kernels.off()
+     
         bigK = self.base_kernel(Xp, Xp2)
-        toc = time.perf_counter()
         K = torch.mean(bigK.to_dense().view(X.size(0), self.num_patches, -1, self.num_patches), dim=(1, 3))
-        print(f"get bigK in {toc - tic:0.4f} seconds")
-        return to_linear_operator(K)
+      
+        return to_linear_operator(K / self.num_patches ** 2.0)
 
     def Kdiag(self, X):
         Xp = self._get_patches(X)
