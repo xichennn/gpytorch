@@ -45,7 +45,7 @@ class IMEDKernel(Kernel):
 
     def forward(self, X, X2=None, diag=False, **params):
         if diag:
-            return self.Kdiag(X)
+            return self.Kdiag(X, diag)
         G = self._get_G()
         #G=L@L.mT
         L = torch.linalg.cholesky(G)
@@ -54,12 +54,12 @@ class IMEDKernel(Kernel):
 
         return self.base_kernel(Xp, Xp2)
         
-    def Kdiag(self, X):
+    def Kdiag(self, X, diag):
         G = self._get_G()
         L = torch.linalg.cholesky(G)
         Xp = X@L
 
-        return torch.sum(self.base_kernel(Xp), dim=-1)
+        return self.base_kernel(Xp, diag=diag)
         
 
 
