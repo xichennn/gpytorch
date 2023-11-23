@@ -29,14 +29,12 @@ class IMEDKernel(Kernel):
         elif len(self.tensor_size) == 3:
             w = self.tensor_size[2]
         v, h = self.tensor_size[0], self.tensor_size[1]
-        a = torch.linspace(0,v-1,v)
-        a = a.repeat(h*w)
-        b = torch.linspace(0,h-1,h)
-        b = b.repeat(v*w)
-        c = torch.linspace(0,w-1,w)
-        c = c.repeat(v*h)
-        # all pixel locations
-        Vloc = torch.cat((a.unsqueeze(1),b.unsqueeze(1), c.unsqueeze(1)), dim=1).to(self.device)
+        a = torch.arange(0, v).view(-1, 1).repeat(h, 1).view(-1, 1).repeat(w, 1)
+        b = torch.arange(0, h).view(-1, 1).repeat(1, v).view(-1, 1).repeat(w, 1)
+        c = torch.arange(0, w).view(-1, 1).repeat(1, v*h).view(-1, 1)
+        # Combining tensors a, b, c to get Vloc
+        Vloc = torch.cat((a, b, c), dim=1).to(self.device)
+        Vloc = Vloc.to(torch.float32)
 
         # pixel pairwise Euclidean distance on image lattice
         Z = self.covar_dist(Vloc, Vloc)  #try torch.cdist(Ploc, Ploc)
