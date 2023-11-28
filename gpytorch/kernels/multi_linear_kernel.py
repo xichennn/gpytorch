@@ -58,7 +58,7 @@ class MLinKernel(Kernel):
         U_321 = KroneckerProductLinearOperator(self.U3, KroneckerProductLinearOperator(self.U2, self.U1))
         U = (U_321 @ X.T).T
         K = U @ (U.T) 
-        bigK = K/K.max() + torch.eye(X.shape[0]) * (1e-4)
+        bigK = K/K.max() + torch.eye(X.shape[0]) * (1e-4).to(self.device)
 
         if diag:
             return bigK.diag()
