@@ -35,11 +35,11 @@ class IMEDKernel(Kernel):
         # Combining tensors a, b, c to get Vloc
         Vloc = torch.cat((a, b, c), dim=1).to(self.device)
         Vloc = Vloc.to(torch.float32)
-        Vloc_ = Vloc.div(self.IMED_lengthscale)
         
         # pixel pairwise Euclidean distance on image lattice
-        Z = self.covar_dist(Vloc_, Vloc_, square_dist=True)  #try torch.cdist(Vloc, Vloc)**2
-        G = torch.exp(-Z/2) 
+        # Z = self.covar_dist(Vloc, Vloc)  #try torch.cdist(Ploc, Ploc)
+        Z = torch.cdist(Vloc, Vloc)
+        G = torch.exp(-self.IMED_lengthscale*Z**2) 
         G = G + 1e-6*torch.diag(torch.ones(G.shape[0])).to(self.device)
 
         return G
