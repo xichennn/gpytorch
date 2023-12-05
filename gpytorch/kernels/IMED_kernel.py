@@ -1,5 +1,4 @@
 import torch
-import math
 from .kernel import Kernel
 from ..constraints.constraints import Positive
 
@@ -40,7 +39,7 @@ class IMEDKernel(Kernel):
         
         # pixel pairwise Euclidean distance on image lattice
         Z = self.covar_dist(Vloc_, Vloc_, square_dist=True)  #try torch.cdist(Vloc, Vloc)**2
-        G = 1/(2*math.pi*self.IMED_lengthscale**2)*torch.exp(-Z/2) 
+        G = torch.exp(-Z/2) 
         G = G + 1e-6*torch.diag(torch.ones(G.shape[0])).to(self.device)
 
         return G
